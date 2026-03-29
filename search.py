@@ -9,6 +9,13 @@ try:
 except ImportError:
     BONUS_AVAILABLE = False
 
+# Import LSI (bonus feature)
+try:
+    from lsi import LSIIndex
+    LSI_AVAILABLE = True
+except ImportError:
+    LSI_AVAILABLE = False
+
 # sebelumnya sudah dilakukan indexing
 # BSBIIndex hanya sebagai abstraksi untuk index tersebut
 BSBI_instance = BSBIIndex(data_dir = 'collection', \
@@ -26,6 +33,12 @@ if BONUS_AVAILABLE:
                             postings_encoding=VBEPostings,
                             output_dir='index',
                             index_name='fst_main_index')
+
+# LSI instance (bonus feature)
+if LSI_AVAILABLE:
+    LSI_instance = LSIIndex(data_dir='collection',
+                            output_dir='index',
+                            n_components=100)
 
 queries = ["alkylated with radioactive iodoacetate", \
            "psychodrama for disturbed children", \
@@ -172,6 +185,51 @@ def fst_spell_correct(query, k=10):
         print(f"  {doc:30} {score:>.3f}")
 
 
+# ============================================================
+# BONUS FEATURES: LSI (Latent Semantic Indexing)
+# ============================================================
+
+def search_lsi(queries, k=10):
+    """Search menggunakan LSI (Latent Semantic Indexing)"""
+    if not LSI_AVAILABLE:
+        print("LSI module not available")
+        return
+
+    print("=" * 60)
+    print("LSI RETRIEVAL (Bonus Feature)")
+    print("=" * 60)
+    for query in queries:
+        print(f"\nQuery  : {query}")
+        print("Results:")
+        for (score, doc) in LSI_instance.retrieve(query, k=k):
+            print(f"  {doc:30} {score:>.4f}")
+
+
+def lsi_find_similar_terms(term, k=10):
+    """Find semantically similar terms using LSI"""
+    if not LSI_AVAILABLE:
+        print("LSI module not available")
+        return
+
+    print("=" * 60)
+    print(f"LSI SIMILAR TERMS: '{term}'")
+    print("=" * 60)
+
+    results = LSI_instance.find_similar_terms(term, k=k)
+    for similar_term, score in results:
+        print(f"  {similar_term:20} similarity: {score:.4f}")
+
+
+def lsi_term_similarity(term1, term2):
+    """Compute semantic similarity between two terms"""
+    if not LSI_AVAILABLE:
+        print("LSI module not available")
+        return
+
+    score = LSI_instance.get_term_similarity(term1, term2)
+    print(f"Semantic similarity('{term1}', '{term2}'): {score:.4f}")
+
+
 if __name__ == "__main__":
     # Demo semua metode
     print("\n" + "=" * 60)
@@ -179,6 +237,8 @@ if __name__ == "__main__":
     print("Fitur: TF-IDF, BM25, BM25+WAND")
     if BONUS_AVAILABLE:
         print("Bonus: SPIMI Index, FST Index (prefix search, spell correction)")
+    if LSI_AVAILABLE:
+        print("Bonus: LSI (Latent Semantic Indexing, similar terms)")
     print("=" * 60 + "\n")
 
     # Test TF-IDF
@@ -215,4 +275,26 @@ if __name__ == "__main__":
             fst_spell_correct("protien metablism", k=3)
         except Exception as e:
             print(f"\nNote: Run 'python fst_index.py' first to create FST index")
+            print(f"Error: {e}")
+
+    # LSI demo
+    if LSI_AVAILABLE:
+        print("\n" + "=" * 60)
+        print("LSI (LATENT SEMANTIC INDEXING) DEMO")
+        print("=" * 60)
+
+        try:
+            # LSI retrieval
+            print("\n--- LSI Retrieval ---")
+            search_lsi(queries[:1], k=5)
+
+            # Similar terms
+            print("\n--- LSI Similar Terms ---")
+            lsi_find_similar_terms("protein", k=5)
+
+            # Term similarity
+            print("\n--- LSI Term Similarity ---")
+            lsi_term_similarity("protein", "cell")
+        except Exception as e:
+            print(f"\nNote: Run 'python lsi.py' first to create LSI index")
             print(f"Error: {e}")

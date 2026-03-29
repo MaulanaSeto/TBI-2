@@ -4,6 +4,7 @@ Bonus Features Demo Script
 This script demonstrates the bonus features implemented for TP2:
 1. SPIMI (Single-Pass In-Memory Indexing)
 2. FST (Finite State Transducer) for dictionary
+3. LSI (Latent Semantic Indexing) with Vector Indexing
 
 Run this script to see all features in action.
 """
@@ -305,6 +306,91 @@ def demo_comparison():
         print()
 
 
+def demo_lsi():
+    """Demonstrate Latent Semantic Indexing"""
+    from lsi import LSIIndex
+
+    print_header("LSI (Latent Semantic Indexing) Demo")
+
+    print("""
+LSI (Latent Semantic Indexing) uses SVD to find latent semantic structure:
+
++----------------------+----------------------------------+--------------------------------+
+| Feature              | Traditional (TF-IDF/BM25)        | LSI                            |
++----------------------+----------------------------------+--------------------------------+
+| Representation       | Sparse term vectors              | Dense semantic vectors         |
++----------------------+----------------------------------+--------------------------------+
+| Synonymy             | Cannot handle                    | Similar terms cluster together |
++----------------------+----------------------------------+--------------------------------+
+| Polysemy             | Cannot distinguish               | Context-dependent meaning      |
++----------------------+----------------------------------+--------------------------------+
+| Storage              | O(vocab_size)                    | O(n_components)                |
++----------------------+----------------------------------+--------------------------------+
+| Similarity           | Exact term matching              | Semantic similarity            |
++----------------------+----------------------------------+--------------------------------+
+
+Process:
+1. Build Term-Document Matrix (TDM) with TF-IDF weighting
+2. Apply Truncated SVD: A ≈ U_k × Σ_k × V_k^T
+3. Document vectors = V_k × Σ_k
+4. Query projection: q' = q^T × U_k × Σ_k^(-1)
+5. Similarity search using cosine similarity
+""")
+
+    print("Initializing LSI Index...")
+    lsi = LSIIndex(
+        data_dir='collection',
+        output_dir='index',
+        n_components=50  # Smaller for demo
+    )
+
+    print("\nBuilding LSI index...")
+    start_time = time.time()
+    lsi.index()
+    elapsed = time.time() - start_time
+    print(f"LSI indexing completed in {elapsed:.2f} seconds")
+
+    # Test retrieval
+    print_subheader("LSI Retrieval Test")
+
+    queries = [
+        "lipid metabolism",
+        "protein synthesis",
+        "cell division"
+    ]
+
+    for query in queries:
+        print(f"\nQuery: {query}")
+        results = lsi.retrieve(query, k=5)
+        for score, doc in results:
+            print(f"  {os.path.basename(doc):30} score: {score:.4f}")
+
+    # Term similarity
+    print_subheader("Semantic Term Similarity")
+
+    term_pairs = [
+        ("protein", "cell"),
+        ("blood", "plasma"),
+        ("disease", "treatment"),
+    ]
+
+    for term1, term2 in term_pairs:
+        if term1 in lsi.term_to_id and term2 in lsi.term_to_id:
+            sim = lsi.get_term_similarity(term1, term2)
+            print(f"  similarity('{term1}', '{term2}'): {sim:.4f}")
+
+    # Find similar terms
+    print_subheader("Find Similar Terms")
+
+    test_terms = ["protein", "blood", "cell"]
+    for term in test_terms:
+        if term in lsi.term_to_id:
+            similar = lsi.find_similar_terms(term, k=5)
+            print(f"\n  Similar to '{term}':")
+            for sim_term, score in similar:
+                print(f"    {sim_term:15} {score:.4f}")
+
+
 def main():
     """Main demo function"""
     print_header("BONUS FEATURES DEMONSTRATION")
@@ -322,15 +408,22 @@ def main():
        - Supports fuzzy search (spelling correction)
        - Ordered iteration of terms
 
+    3. LSI (Latent Semantic Indexing) with Vector Indexing
+       - Uses SVD for dimensionality reduction
+       - Finds latent semantic structure
+       - Supports semantic similarity search
+       - Handles synonymy and polysemy
+
     Select demo to run:
     1. SPIMI Demo
     2. FST Demo
     3. FST Index Demo (Advanced Search Features)
-    4. Comparison of All Methods
-    5. Run All Demos
+    4. LSI Demo (Latent Semantic Indexing)
+    5. Comparison of All Methods
+    6. Run All Demos
     """)
 
-    choice = input("Enter choice (1-5) [5]: ").strip() or "5"
+    choice = input("Enter choice (1-6) [6]: ").strip() or "6"
 
     if choice == "1":
         demo_spimi()
@@ -339,11 +432,14 @@ def main():
     elif choice == "3":
         demo_fst_index()
     elif choice == "4":
-        demo_comparison()
+        demo_lsi()
     elif choice == "5":
+        demo_comparison()
+    elif choice == "6":
         demo_fst()  # FST first (no indexing needed)
         demo_spimi()
         demo_fst_index()
+        demo_lsi()
     else:
         print("Invalid choice")
 
