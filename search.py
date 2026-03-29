@@ -1,11 +1,31 @@
 from bsbi import BSBIIndex
 from compression import VBEPostings, OptPForDeltaPostings
 
+# Import SPIMI and FST-based indexes (bonus features)
+try:
+    from spimi import SPIMIIndex
+    from fst_index import FSTIndex
+    BONUS_AVAILABLE = True
+except ImportError:
+    BONUS_AVAILABLE = False
+
 # sebelumnya sudah dilakukan indexing
 # BSBIIndex hanya sebagai abstraksi untuk index tersebut
 BSBI_instance = BSBIIndex(data_dir = 'collection', \
                           postings_encoding = VBEPostings, \
                           output_dir = 'index')
+
+# SPIMI and FST instances (bonus features)
+if BONUS_AVAILABLE:
+    SPIMI_instance = SPIMIIndex(data_dir='collection',
+                                postings_encoding=VBEPostings,
+                                output_dir='index',
+                                index_name='spimi_main_index')
+
+    FST_instance = FSTIndex(data_dir='collection',
+                            postings_encoding=VBEPostings,
+                            output_dir='index',
+                            index_name='fst_main_index')
 
 queries = ["alkylated with radioactive iodoacetate", \
            "psychodrama for disturbed children", \
@@ -79,11 +99,86 @@ def compare_methods(query, k=10):
         print("\n[INFO] BM25 dan BM25+WAND menghasilkan ranking berbeda (normal untuk tie-breaking)")
 
 
+# ============================================================
+# BONUS FEATURES: SPIMI and FST-based search
+# ============================================================
+
+def search_spimi(queries, k=10):
+    """Search menggunakan SPIMI index (Bonus Feature)"""
+    if not BONUS_AVAILABLE:
+        print("SPIMI module not available")
+        return
+
+    print("=" * 60)
+    print("SPIMI INDEX RETRIEVAL (Bonus Feature)")
+    print("=" * 60)
+    for query in queries:
+        print(f"\nQuery  : {query}")
+        print("Results (BM25):")
+        for (score, doc) in SPIMI_instance.retrieve_bm25(query, k=k):
+            print(f"  {doc:30} {score:>.3f}")
+
+
+def search_fst(queries, k=10):
+    """Search menggunakan FST-based index (Bonus Feature)"""
+    if not BONUS_AVAILABLE:
+        print("FST module not available")
+        return
+
+    print("=" * 60)
+    print("FST INDEX RETRIEVAL (Bonus Feature)")
+    print("=" * 60)
+    for query in queries:
+        print(f"\nQuery  : {query}")
+        print("Results (BM25):")
+        for (score, doc) in FST_instance.retrieve_bm25(query, k=k):
+            print(f"  {doc:30} {score:>.3f}")
+
+
+def fst_prefix_search(prefix, k=10):
+    """Prefix search using FST (Bonus Feature)"""
+    if not BONUS_AVAILABLE:
+        print("FST module not available")
+        return
+
+    print("=" * 60)
+    print(f"FST PREFIX SEARCH: '{prefix}'")
+    print("=" * 60)
+    results = FST_instance.prefix_search(prefix, k=k)
+    for term, term_id in results:
+        print(f"  {term} (id={term_id})")
+
+
+def fst_spell_correct(query, k=10):
+    """Spell-corrected search using FST (Bonus Feature)"""
+    if not BONUS_AVAILABLE:
+        print("FST module not available")
+        return
+
+    print("=" * 60)
+    print(f"FST SPELL-CORRECTED SEARCH")
+    print(f"Original query: '{query}'")
+    print("=" * 60)
+
+    results, corrections = FST_instance.spell_corrected_search(query, k=k)
+
+    if corrections:
+        print(f"Corrections: {corrections}")
+    else:
+        print("No corrections needed")
+
+    print("\nResults:")
+    for (score, doc) in results:
+        print(f"  {doc:30} {score:>.3f}")
+
+
 if __name__ == "__main__":
     # Demo semua metode
     print("\n" + "=" * 60)
     print("SEARCH ENGINE DEMO")
     print("Fitur: TF-IDF, BM25, BM25+WAND")
+    if BONUS_AVAILABLE:
+        print("Bonus: SPIMI Index, FST Index (prefix search, spell correction)")
     print("=" * 60 + "\n")
 
     # Test TF-IDF
@@ -100,3 +195,24 @@ if __name__ == "__main__":
 
     # Perbandingan
     compare_methods(queries[0], k=5)
+
+    # Bonus features demo
+    if BONUS_AVAILABLE:
+        print("\n" + "=" * 60)
+        print("BONUS FEATURES DEMO")
+        print("=" * 60)
+
+        # Note: These require running the bonus indexers first
+        # Run: python spimi.py (or python fst_index.py) to create the indexes
+
+        try:
+            # FST prefix search
+            print("\n--- FST Prefix Search ---")
+            fst_prefix_search("meta", k=5)
+
+            # FST spell correction
+            print("\n--- FST Spell Correction ---")
+            fst_spell_correct("protien metablism", k=3)
+        except Exception as e:
+            print(f"\nNote: Run 'python fst_index.py' first to create FST index")
+            print(f"Error: {e}")
